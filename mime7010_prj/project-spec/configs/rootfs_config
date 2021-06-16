@@ -26,7 +26,7 @@ CONFIG_system-zynq=y
 #
 # base-files 
 #
-# CONFIG_base-files is not set
+CONFIG_base-files=y
 # CONFIG_base-files-dbg is not set
 # CONFIG_base-files-dev is not set
 
@@ -156,7 +156,7 @@ CONFIG_haveged=y
 #
 # i2c-tools 
 #
-# CONFIG_i2c-tools is not set
+CONFIG_i2c-tools=y
 # CONFIG_i2c-tools-dev is not set
 # CONFIG_i2c-tools-dbg is not set
 # CONFIG_i2c-tools-misc is not set
