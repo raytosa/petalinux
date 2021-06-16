@@ -1,0 +1,158 @@
+sudo nautilus
+
+sudo chmod 777 /dev/ttyUSB0 
+
+运行minicom
+sudo   minicom  -s   主界面 ctrl+A
+
+===板子挂载主机NFS目录================================================================================================================
+主机
+修改nfs服务器配置文件
+
+sudo nano /etc/exports
+在该文件最后添加一行：       /home/xt500/aaa/nfs7010 *(rw,sync,no_root_squash)
+exportfs -r
+service rpcbind start
+service nfs start
+或者/etc/init.d/nfs-kernel-server start
+输入"showmount -e"命令可以查看 nfs server 路径 
+-------------------------------------------------
+板子：
+手动挂载，需要加参数 -o nolock。例如
+mount -t nfs -o nolock 192.168.2.10:/home/xt500/aaa/nfs7010 /mnt
+自动挂载：修改启动参数kernel bootargs   ，将启动参数改为手动配置，然后增加参数
+nfsroot=192.168.2.8:/home/xt500/aaa/nfs7010,proto=tcp,nfsvers=3,nolock ip=192.168.2.8
+其中192.168.2.8为HOST端IP，192.168.2.8为TARGET端IP地址
+
+
+
+===编译cgminer=======================================================================================================================
+
+
+source /home/xt500/aaa/petalinux/mime7010_prj/images/linux/sdk/environment-setup-cortexa9t2hf-neon-xilinx-linux-gnueabi
+先编译curl
+./configure --prefix=/home/xt500/ccc/out --host=arm-xilinx-linux-gnueabi CC=arm-xilinx-linux-gnueabi-gcc
+然后编译cgminer
+export LIBCURL_CFLAGS=-I/home/xt500/ccc/out/include/curl
+export LIBCURL_LIBS=-L/home/xt500/ccc/out/lib
+./configure --prefix=/home/xt500/aaa/cgminer/out --host=arm-xilinx-linux-gnueabi   LIBCURL_LIBS="-L/home/xt500/ccc/out/lib -lcurl" LIBS=-lz  --enable-ants2
+
+
+│http://petalinux.xilinx.com/sswreleases/rel-v${PETALINUX_VER%%.*}/dow│
+
+source  /tools/Xilinx/PetaLinux/2020.2/tool/components/yocto/buildtools/environment-setup-x86_64-petalinux-linux
+source  /tools/Xilinx/PetaLinux/2020.2/tool/settings.sh
+---------创建工程----------------------------
+cd ~/aaa/petalinux
+petalinux-create --type project --template zynq --name mime7010_prj
+---------引用硬件信息----------------------------
+
+复制 bit，xsa 到mime7010_prj
+cd ~/aaa/petalinux/mime7010_prj
+petalinux-config --get-hw-description=.
+
+---------第1遍 配置----------------------------
+petalinux-config
+	Subsystem AUTO Hardware Settings  ---> 
+		Ethernet Settings  ---> 改静态ip，成品要改随机MAC
+		Advanced bootable images storage Settings  ---> 不用改，成品根据实际修改	
+	Image Packaging Configuration  ---> 
+		 Root filesystem type (INITRD)  --->改为sd 
+		(/tftpboot) tftpboot directory    改为 │/home/xt500/aaa/tftpboot
+petalinux-config -c u-boot
+	  Boot media  --->        
+		[*] Support for booting from SD/EMMC   
+
+petalinux-config -c kernel
+	Device Drivers -> Userspace I/O drivers		
+     		+-SPI support--->  
+			<*>   User mode SPI device driver support 
+		<*> Userspace I/O platform driver with generic IRQ handing
+		<*> Userspace platform driver with generic irq and dynamic memory
+
+	Power management options  --->
+     		Suspend to RAM and standby
+	将 system-user.dtsi 替换为：
+
+	/include/ "system-conf.dtsi"
+	/ {
+	    chosen {
+		bootargs = "earlycon clk_ignore_unused   uio_pdrv_genirq.of_id=generic-uio";
+		stdout-path = "serial0:115200n8";
+	    };
+	};
+	&axi_gpio_0 {
+	    compatible = "generic-uio";
+	};
+
+petalinux-config -c rootfs
+ 	Image Features  ---> 
+ 	[ ] ssh-server-dropbear                                          │ │  
+  	[*] ssh-server-openssh                                           │ │  
+  	[*] hwcodecs                                                     │ │  
+ 	[ ] package-management                                           │ │  
+	-*- debug-tweaks                                                 │ │  
+  	[*] auto-login   
+petalinux-build
+
+cd images/linux/
+petalinux-package --boot --format BIN --fsbl zynq_fsbl.elf --fpga system.bit --u-boot
+cp rootfs.cpio   /media/xt500/Ext4_roofs 
+cd /media/xt500/Ext4_roofs 
+sudo apt-get install pax
+sudo pax -rvf rootfs.cpio
+---------------------------------------------------------------------------------
+petalinux-create -t apps --template c --name myapp-gpio --enable
+petalinux-build
+---------------------------------------------------------------------------------
+
+petalinux-build --sdk
+petalinux-package --sysroot
+
+
+
+
+
+
+
+
+
+
+
+===============================================================================
+然后创建了 sysroot，在 Vitis 中需要使用它来进行交叉编译。
+petalinux-config -c kernel
+Select Device Drivers -> Userspace I/O drivers
+<*> Userspace I/O platform driver with generic IRQ handing
+<*> Userspace platform driver with generic irq and dynamic memory
+-----------------------
+将 system-user.dtsi 替换为：
+
+/include/ "system-conf.dtsi"
+
+/ {
+
+    chosen {
+
+        bootargs = "earlycon clk_ignore_unused   uio_pdrv_genirq.of_id=generic-uio";
+
+        stdout-path = "serial0:115200n8";
+
+    };
+
+};
+
+ 
+
+&axi_gpio_0 {
+
+    compatible = "generic-uio";
+
+};
+petalinux-build --sdk
+petalinux-package --sysroot
+
+=============================================================================
+
+
+
