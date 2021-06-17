@@ -31,8 +31,10 @@ nfsroot=192.168.2.8:/home/xt500/aaa/nfs7010,proto=tcp,nfsvers=3,nolock ip=192.16
 
 source /home/xt500/aaa/petalinux/mime7010_prj/images/linux/sdk/environment-setup-cortexa9t2hf-neon-xilinx-linux-gnueabi
 先编译curl
-./configure --prefix=/home/xt500/ccc/out --host=arm-xilinx-linux-gnueabi CC=arm-xilinx-linux-gnueabi-gcc
-然后编译cgminer
+这句出错./configure --prefix=/home/xt500/ccc/out --host=arm-xilinx-linux-gnueabi CC=arm-xilinx-linux-gnueabi-gcc
+要去掉后面CC部分
+./configure --prefix=/home/xt500/ccc/out --host=arm-xilinx-linux-gnueabi
+然后make编译cgminer
 export LIBCURL_CFLAGS=-I/home/xt500/ccc/out/include/curl
 export LIBCURL_LIBS=-L/home/xt500/ccc/out/lib
 ./configure --prefix=/home/xt500/aaa/cgminer/out --host=arm-xilinx-linux-gnueabi   LIBCURL_LIBS="-L/home/xt500/ccc/out/lib -lcurl" LIBS=-lz  --enable-ants2
